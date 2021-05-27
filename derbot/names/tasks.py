@@ -63,7 +63,9 @@ def toot_name(name_id=None, mastodon=settings.MASTO):
             Q(registered=False) & Q(tooted=None) & Q(cleared=True)
         ).order_by("?").first()
     if name:
+        print("Tooting name '{0}'...".format(name))
         toot = mastodon.status_post(name)
+        print("  Tooted at {0}".format(toot.created_at))
         name.tooted = toot.created_at
         name.save()
 
