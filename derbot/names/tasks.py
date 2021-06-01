@@ -105,6 +105,7 @@ def toot_name(
             print("Tooting name '{0}'...".format(name))
             toot = mastodon.status_post(name)
             print("  Tooted at {0}".format(toot.created_at))
+            name.toot_id = toot.id
             name.tooted = toot.created_at
             name.save()
             return name
