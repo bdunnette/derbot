@@ -13,11 +13,10 @@ requests = "*"
 requests-toolbelt = "*"
 beautifulsoup4 = "*"
 inscriptis = "*"
+textgenrnn = {git = "https://github.com/minimaxir/textgenrnn.git"}
 
 [dev-packages]
+black = "*"
 
 [requires]
 python_version = "3"
-
-[packages.textgenrnn]
-git = "https://github.com/minimaxir/textgenrnn.git"

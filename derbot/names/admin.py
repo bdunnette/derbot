@@ -20,6 +20,7 @@ class FavouritesFilter(admin.SimpleListFilter):
         if self.value() == "no":
             return queryset.filter(favourites_count=0)
 
+
 class TootedFilter(admin.SimpleListFilter):
     title = _("Tooted")
     parameter_name = "tooted"
@@ -39,6 +40,13 @@ class TootedFilter(admin.SimpleListFilter):
 
 @admin.register(DerbyName)
 class NameAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "generated", "temperature",
-                    "registered", 'favourites_count', 'reblogs_count')
-    list_filter = ["registered", FavouritesFilter,TootedFilter]
+    list_display = (
+        "id",
+        "name",
+        "generated",
+        "temperature",
+        "registered",
+        "favourites_count",
+        "reblogs_count",
+    )
+    list_filter = ["registered", FavouritesFilter, TootedFilter]
