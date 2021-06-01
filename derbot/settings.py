@@ -148,7 +148,7 @@ HUEY = {
     "store_none": False,  # If a task returns None, do not save to results.
     "utc": True,
     "consumer": {
-        "workers": env.int("WORKERS", default=2),
+        "workers": env.int("WORKERS", default=3),
         "worker_type": "thread",
         "initial_delay": 0.1,  # Smallest polling interval, same as -d.
         "backoff": 1.15,  # Exponential backoff using this rate, -b.

@@ -64,6 +64,7 @@ def fetch_toots(mastodon=settings.MASTO):
         new_name_objs = [
             DerbyName(
                 name=get_text(s.content).strip(),
+                toot_id=s.id,
                 tooted=s.created_at,
                 reblogs_count=s.reblogs_count,
                 favourites_count=s.favourites_count,

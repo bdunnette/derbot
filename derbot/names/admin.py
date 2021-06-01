@@ -51,3 +51,8 @@ class NameAdmin(admin.ModelAdmin):
         "reblogs_count",
     )
     list_filter = ["registered", "cleared", FavouritesFilter, TootedFilter]
+    actions = ["mark_cleared"]
+
+    @admin.action(description="Mark selected names as cleared for tooting")
+    def mark_cleared(self, request, queryset):
+        queryset.update(cleared=True)
