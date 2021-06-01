@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 
 import environ
+from redis import ConnectionPool
 from mastodon import Mastodon
 import requests
 
@@ -31,12 +32,12 @@ environ.Env.read_env(env_file=str(BASE_DIR.joinpath(".env")))
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env.str('SECRET_KEY',default='')
+SECRET_KEY = env.str("SECRET_KEY", default="")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
 
 
 # Application definition
@@ -132,13 +133,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = "/static/"
+STATIC_ROOT = env.path("STATIC_ROOT", default=BASE_DIR.joinpath("static"))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REDIS_URL = env("REDIS_URL", default="")
+REDIS_HOST = env("REDIS_HOST", default="")
 
 HUEY = {
     "immediate": DEBUG,  # If DEBUG=True, run synchronously.
@@ -158,9 +160,10 @@ HUEY = {
     },
 }
 
-if REDIS_URL:
+if REDIS_HOST:
     HUEY["huey_class"] = "huey.PriorityRedisHuey"
-    HUEY["url"] = REDIS_URL
+    pool = ConnectionPool(host=REDIS_HOST, port=6379, max_connections=20)
+    HUEY["connection"] = {"connection_pool": pool}
 else:
     HUEY["huey_class"] = "huey.SqliteHuey"
     HUEY["filename"] = "tasks.sqlite3"

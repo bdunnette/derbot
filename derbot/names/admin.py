@@ -45,8 +45,9 @@ class NameAdmin(admin.ModelAdmin):
         "name",
         "generated",
         "temperature",
+        "cleared",
         "registered",
         "favourites_count",
         "reblogs_count",
     )
-    list_filter = ["registered", FavouritesFilter, TootedFilter]
+    list_filter = ["registered", "cleared", FavouritesFilter, TootedFilter]

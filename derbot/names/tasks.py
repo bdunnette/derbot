@@ -59,8 +59,8 @@ def fetch_toots(mastodon=settings.MASTO):
     print("Downloading statuses for account {0}...".format(account_id))
     statuses = mastodon.account_statuses(account_id, exclude_replies=True)
     while statuses:
-        print(statuses)
-        print(dir(statuses))
+        # print(statuses)
+        # print(dir(statuses))
         new_name_objs = [
             DerbyName(
                 name=get_text(s.content).strip(),

@@ -13,10 +13,17 @@ requests = "*"
 requests-toolbelt = "*"
 beautifulsoup4 = "*"
 inscriptis = "*"
-textgenrnn = {git = "https://github.com/minimaxir/textgenrnn.git"}
+psycopg2-binary = "*"
+redis = "*"
 
 [dev-packages]
-black = "*"
+black = "==21.5b2"
 
 [requires]
 python_version = "3"
+
+[pipenv]
+allow_prereleases = true
+
+[packages.textgenrnn]
+git = "https://github.com/minimaxir/textgenrnn.git"
