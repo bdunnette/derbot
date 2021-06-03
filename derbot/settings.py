@@ -135,12 +135,13 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = env.path("STATIC_ROOT", default=BASE_DIR.joinpath("static"))
 
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REDIS_HOST = env("REDIS_HOST", default="")
+REDIS_URL = env("REDIS_URL", default="")
 
 HUEY = {
     "immediate": DEBUG,  # If DEBUG=True, run synchronously.
@@ -160,9 +161,9 @@ HUEY = {
     },
 }
 
-if REDIS_HOST:
+if REDIS_URL:
     HUEY["huey_class"] = "huey.PriorityRedisHuey"
-    pool = ConnectionPool(host=REDIS_HOST, port=6379, max_connections=20)
+    pool = ConnectionPool().from_url(REDIS_URL)
     HUEY["connection"] = {"connection_pool": pool}
 else:
     HUEY["huey_class"] = "huey.SqliteHuey"
