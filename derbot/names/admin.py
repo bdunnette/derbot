@@ -1,7 +1,8 @@
+from derbot.names.models import DerbyName
 from django.contrib import admin
 from django.db.models import Q
 from django.utils.translation import gettext as _
-from derbot.names.models import DerbyName
+from import_export.admin import ImportExportMixin
 
 
 class FavouritesFilter(admin.SimpleListFilter):
@@ -39,7 +40,7 @@ class TootedFilter(admin.SimpleListFilter):
 
 
 @admin.register(DerbyName)
-class NameAdmin(admin.ModelAdmin):
+class NameAdmin(ImportExportMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "name",

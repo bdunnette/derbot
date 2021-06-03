@@ -20,10 +20,7 @@ import requests
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-env = environ.Env(
-    # set casting, default value
-    # DEBUG=(bool, False)
-)
+env = environ.Env()
 
 # reading .env file
 environ.Env.read_env(env_file=str(BASE_DIR.joinpath(".env")))
@@ -50,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "huey.contrib.djhuey",
+    "import_export",
     "derbot.names.apps.NamesConfig",
 ]
 
@@ -132,8 +130,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+# STATICFILES_DIRS = [
+#     BASE_DIR.joinpath('static'),
+# ]
+
+STATIC_ROOT = BASE_DIR.joinpath("static")
 STATIC_URL = "/static/"
-STATIC_ROOT = env.path("STATIC_ROOT", default=BASE_DIR.joinpath("static"))
 
 
 # Default primary key field type
@@ -144,7 +146,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REDIS_URL = env("REDIS_URL", default="")
 
 HUEY = {
-    "immediate": DEBUG,  # If DEBUG=True, run synchronously.
+    "immediate": env.bool("TASKS_IMMEDIATE", default=False),
     "results": True,  # Store return values of tasks.
     "store_none": False,  # If a task returns None, do not save to results.
     "utc": True,
