@@ -17,7 +17,7 @@ from django.db.models import Q
 
 @db_periodic_task(crontab(minute="20"))
 def generate_names(
-    batch_size=10,
+    batch_size=100,
     default_temp=settings.DEFAULT_TEMP,
     random_temps=settings.USE_RANDOM_TEMPS,
     min_temp=settings.MIN_TEMP,
@@ -75,7 +75,7 @@ def fetch_toots(mastodon=settings.MASTO):
         statuses = mastodon.fetch_next(statuses)
 
 
-@db_periodic_task(crontab(minute="*/20"))
+@db_periodic_task(crontab(minute="1"))
 def toot_name(
     name_id=None,
     mastodon=settings.MASTO,
