@@ -75,7 +75,7 @@ def fetch_toots(mastodon=settings.MASTO):
         statuses = mastodon.fetch_next(statuses)
 
 
-@db_periodic_task(crontab(minute="*/15", hour="9-16"))
+@db_periodic_task(crontab(minute="*/20"))
 def toot_name(
     name_id=None,
     mastodon=settings.MASTO,
