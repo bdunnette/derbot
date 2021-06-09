@@ -16,3 +16,17 @@ class DerbyName(models.Model):
     def __str__(self):
         return self.name
 
+
+class ColorScheme(models.Model):
+    name = models.CharField(max_length=255)
+    hex = models.CharField(max_length=20, unique=True)
+    r = models.IntegerField(default=0)
+    g = models.IntegerField(default=0)
+    b = models.IntegerField(default=0)
+    pair_with = models.ForeignKey("self", null=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return self.name
+
+    def rgb(self):
+        return (self.r, self.g, self.b)

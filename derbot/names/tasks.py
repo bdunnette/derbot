@@ -1,18 +1,20 @@
 import random
 import string
 
-# import requests
+import requests
+from bs4 import BeautifulSoup
+from derbot.names.models import DerbyName, ColorScheme
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from huey import crontab
-from huey.contrib.djhuey import db_task, task, db_periodic_task
+from huey.contrib.djhuey import db_periodic_task, db_task, task
 from inscriptis import get_text
-from bs4 import BeautifulSoup
-import requests
 
 
-from derbot.names.models import DerbyName
-from django.db.models import Q
+def hex_to_rgb(hex):
+    rgb = tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
+    return rgb
 
 
 @db_periodic_task(crontab(minute="20"))
@@ -186,3 +188,45 @@ def fetch_names_rdr_letter(
     else:
         print("Need initial letter!")
         return False
+
+
+@db_periodic_task(crontab(hour="3", minute="0"))
+def fetch_colors(mastodon=settings.MASTO, color_bot=settings.COLOR_BOT):
+    account_id = mastodon.account_search(color_bot)[0]['id']
+    statuses = mastodon.account_statuses(account_id, exclude_replies=True)
+    while statuses:
+        # print(statuses)
+        # print(dir(statuses))
+        # color_objs = []
+        for s in statuses:
+            if s.favourites_count > 0:
+                # Get first two items/lines from toot, since these contain colors
+                status_colors = get_text(
+                    s.content).strip().splitlines()[:2]
+                # Get last element of each line, containing color hex code
+                color_codes = [
+                    {
+                        'hex': c.split()[-1].lstrip('#'),
+                        'rgb':hex_to_rgb(c.split()[-1].lstrip('#')),
+                        'name':' '.join(c.split()[:-1]).rstrip('#').strip()
+                    }
+                    for c in status_colors
+                ]
+                print(color_codes)
+                color1 = color_codes[0]
+                c1, created = ColorScheme.objects.update_or_create(
+                    name=color1['name'], hex=color1['hex'],
+                    r=color1['rgb'][0], g=color1['rgb'][1], b=color1['rgb'][2]
+                )
+                print(c1)
+                color2 = color_codes[1]
+                c2, created = ColorScheme.objects.update_or_create(
+                    name=color2['name'], hex=color2['hex'],
+                    r=color2['rgb'][0], g=color2['rgb'][1], b=color2['rgb'][2],
+                    pair_with=c1
+                )
+                print(c2)
+                c1.pair_with = c2
+                c1.save()
+        # ColorScheme.objects.bulk_create(color_objs, ignore_conflicts=True)
+        statuses = mastodon.fetch_next(statuses)
