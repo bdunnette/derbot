@@ -195,3 +195,5 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = env("DATA_UPLOAD_MAX_NUMBER_FIELDS", default=Non
 
 SESSION = requests.session()
 REQUEST_TIMEOUT = env("REQUEST_TIMEOUT", default=15)
+
+COLOR_BOT = env('COLOR_BOT', default='accessibleColors@botsin.space')
