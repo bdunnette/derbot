@@ -1,5 +1,6 @@
 import random
 import string
+import os
 
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +8,9 @@ from derbot.names.models import DerbyName, ColorScheme
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
+from django.core.files import File
+from io import BytesIO
+from PIL import Image, ImageOps, ImageDraw, ImageFont
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, task
 from inscriptis import get_text
@@ -16,6 +20,31 @@ def hex_to_rgb(hex):
     rgb = tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
     return rgb
 
+def text_wrap(text, font, max_width):
+    # From https://fiveminutes.today/articles/putting-text-on-images-with-python-pil/
+    lines = []
+    # If the width of the text is smaller than image width
+    # we don't need to split it, just add it to the lines array
+    # and return
+    if font.getsize(text)[0] <= max_width:
+        lines.append(text)
+    else:
+        # split the line by spaces to get words
+        words = text.split(' ')
+        i = 0
+        # append every word to a line while its width is shorter than image width
+        while i < len(words):
+            line = ''
+            while i < len(words) and font.getsize(line + words[i])[0] <= max_width:
+                line = line + words[i] + " "
+                i += 1
+            if not line:
+                line = words[i]
+                i += 1
+            # when the line gets longer than the max width do not append the word,
+            # add the line to the lines array
+            lines.append(line.strip())
+    return lines
 
 @db_periodic_task(crontab(minute="20"))
 def generate_names(
@@ -230,3 +259,47 @@ def fetch_colors(mastodon=settings.MASTO, color_bot=settings.COLOR_BOT):
                 c1.save()
         # ColorScheme.objects.bulk_create(color_objs, ignore_conflicts=True)
         statuses = mastodon.fetch_next(statuses)
+
+@db_task()
+def generate_jersey(
+    name_id
+):
+    name = DerbyName.objects.get(pk=name_id)
+    print(name)
+    im = Image.open(settings.BASE_DIR.joinpath('derbot','names','images','t-shirt.jpg'))
+    print(im)
+    fg_color, bg_color = name.get_jersey_colors()
+    number = name.get_number()
+    im_gray = ImageOps.grayscale(im)
+    im_color = ImageOps.colorize(im_gray, bg_color.rgb(), 'white')
+    draw = ImageDraw.Draw(im_color)
+    font = random.choice(settings.FONTS)
+    print(font)
+    font_path = os.path.join(settings.FONT_DIR, font)
+    print(font_path)
+    print("Generating jersey for {}".format(name))
+    fnt1 = ImageFont.truetype(font_path, size=settings.TEXT_FONT_SIZE)
+    print(fnt1)
+    w, h = draw.textsize(name.name, font=fnt1)
+    lines = text_wrap(name.name, fnt1, settings.MAX_TEXT_WIDTH)
+    print(lines)
+    y = (im_color.height - h) * .2
+    for line in lines:
+        print(line)
+        line_width, line_height = draw.textsize(line, font=fnt1)
+        print(line_width, line_height)
+        draw.text(((im_color.width - line_width) / 2, y),line, fill=fg_color.rgb(), font=fnt1)
+        y += line_height
+    # Generate a random float 1-9999 and pick a substring from it
+    nfs = settings.NUMBER_FONT_SIZE
+    fnt2 = ImageFont.truetype(font_path, size=nfs)
+    w, h = draw.textsize(number, font=fnt2)
+    while w > settings.MAX_NUMBER_WIDTH:
+        nfs = nfs - 10
+        fnt2 = ImageFont.truetype(font_path, size=nfs)
+        w, h = draw.textsize(number, font=fnt2)
+        draw.text(((im_color.width - w) / 2, y), number, fill=fg_color.rgb(), font=fnt2)
+    blob = BytesIO()
+    im_color.save(blob, 'JPEG')
+    name.jersey.save("{}.jpg".format(
+        name.id), File(blob), save=False)

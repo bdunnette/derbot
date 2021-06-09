@@ -5,7 +5,7 @@ import fractions
 import humanize
 
 # from derbot.names.tasks import generate_number
-from derbot.names.models import DerbyName
+from derbot.names.models import DerbyName, ColorScheme
 
 
 @receiver(pre_save, sender=DerbyName)
@@ -18,3 +18,14 @@ def generate_number(sender, instance, **kwargs):
         if to_humanize == True:
             jersey_number = humanize.fractional(jersey_number).replace("/", "⁄")
         instance.number = jersey_number
+
+
+@receiver(pre_save, sender=DerbyName)
+def generate_number(sender, instance, **kwargs):
+    if instance.cleared and not instance.fg_color:
+        fg_color = ColorScheme.objects.order_by("?").first()
+        bg_color = fg_color.pair_with
+        print(fg_color, bg_color)
+        instance.fg_color = fg_color
+        instance.bg_color = bg_color
+

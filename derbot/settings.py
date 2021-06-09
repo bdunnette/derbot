@@ -10,12 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 import environ
-from redis import ConnectionPool
-from mastodon import Mastodon
 import requests
+from mastodon import Mastodon
+from redis import ConnectionPool
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -197,3 +198,9 @@ SESSION = requests.session()
 REQUEST_TIMEOUT = env("REQUEST_TIMEOUT", default=15)
 
 COLOR_BOT = env('COLOR_BOT', default='accessibleColors@botsin.space')
+FONT_DIR = env.path('FONT_DIR',default=BASE_DIR.joinpath('derbot','names','fonts'))
+FONTS = env.list('FONTS', default=os.listdir(FONT_DIR))
+TEXT_FONT_SIZE = env.int('TEXT_FONT_SIZE', default=60)
+NUMBER_FONT_SIZE = env.int('NUMBER_FONT_SIZE', default=180)
+MAX_TEXT_WIDTH = env.int('MAX_TEXT_WIDTH', default=340)
+MAX_NUMBER_WIDTH = env.int('MAX_TEXT_WIDTH', default=280)
