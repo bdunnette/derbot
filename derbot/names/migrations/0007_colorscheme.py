@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('names', '0005_derbyname_toot_id'),
+        ('names', '0006_derbyname_number'),
     ]
 
     operations = [
