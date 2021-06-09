@@ -3,6 +3,7 @@ from django.db import models
 
 class DerbyName(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    number = models.CharField(max_length=64, null=True, blank=True)
     registered = models.BooleanField(default=False)
     cleared = models.BooleanField(default=False)
     generated = models.DateTimeField(null=True, blank=True)
@@ -14,6 +15,7 @@ class DerbyName(models.Model):
 
     def __str__(self):
         return self.name
+        
 
 class ColorScheme(models.Model):
     name = models.CharField(max_length=255)

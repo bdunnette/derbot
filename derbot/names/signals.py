@@ -1,9 +1,11 @@
-import random
-
-import humanize
-from derbot.names.models import DerbyName
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+import random
+import fractions
+import humanize
+
+# from derbot.names.tasks import generate_number
+from derbot.names.models import DerbyName
 
 
 @receiver(pre_save, sender=DerbyName)

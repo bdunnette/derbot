@@ -16,6 +16,7 @@ inscriptis = "*"
 psycopg2-binary = "*"
 redis = "*"
 numpy = "==1.19.5"
+humanize = "*"
 
 [dev-packages]
 black = "==21.5b2"
