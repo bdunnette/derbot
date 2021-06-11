@@ -1,6 +1,7 @@
 import random
 import string
 import os
+import logging
 
 import requests
 from bs4 import BeautifulSoup
@@ -20,6 +21,7 @@ def hex_to_rgb(hex):
     rgb = tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
     return rgb
 
+
 def text_wrap(text, font, max_width):
     # From https://fiveminutes.today/articles/putting-text-on-images-with-python-pil/
     lines = []
@@ -30,11 +32,11 @@ def text_wrap(text, font, max_width):
         lines.append(text)
     else:
         # split the line by spaces to get words
-        words = text.split(' ')
+        words = text.split(" ")
         i = 0
         # append every word to a line while its width is shorter than image width
         while i < len(words):
-            line = ''
+            line = ""
             while i < len(words) and font.getsize(line + words[i])[0] <= max_width:
                 line = line + words[i] + " "
                 i += 1
@@ -45,6 +47,7 @@ def text_wrap(text, font, max_width):
             # add the line to the lines array
             lines.append(line.strip())
     return lines
+
 
 @db_periodic_task(crontab(minute="20"))
 def generate_names(
@@ -134,7 +137,19 @@ def toot_name(
             )
         else:
             print("Tooting name '{0}'...".format(name))
-            toot = mastodon.status_post(name)
+            if name.jersey == "":
+                toot = mastodon.status_post(name)
+            else:
+                image_description = "{0}-colored shirt with '{1}'\
+                        and the number {2} printed on it in {3} lettering.".format(
+                    str(name.bg_color), str(name), name.number, str(name.fg_color)
+                )
+                logging.info(image_description)
+                media = mastodon.media_post(
+                    name.jersey, mime_type="image/jpeg", description=image_description
+                )
+                logging.debug(media)
+                toot = mastodon.status_post(name, media_ids=media)
             print("  Tooted at {0}".format(toot.created_at))
             name.toot_id = toot.id
             name.tooted = toot.created_at
@@ -221,76 +236,67 @@ def fetch_names_rdr_letter(
 
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_colors(mastodon=settings.MASTO, color_bot=settings.COLOR_BOT):
-    account_id = mastodon.account_search(color_bot)[0]['id']
+    account_id = mastodon.account_search(color_bot)[0]["id"]
     statuses = mastodon.account_statuses(account_id, exclude_replies=True)
     while statuses:
-        # print(statuses)
-        # print(dir(statuses))
-        # color_objs = []
         for s in statuses:
             if s.favourites_count > 0:
                 # Get first two items/lines from toot, since these contain colors
-                status_colors = get_text(
-                    s.content).strip().splitlines()[:2]
+                status_colors = get_text(s.content).strip().splitlines()[:2]
                 # Get last element of each line, containing color hex code
                 color_codes = [
                     {
-                        'hex': c.split()[-1].lstrip('#'),
-                        'rgb':hex_to_rgb(c.split()[-1].lstrip('#')),
-                        'name':' '.join(c.split()[:-1]).rstrip('#').strip()
+                        "hex": c.split()[-1].lstrip("#"),
+                        "rgb": hex_to_rgb(c.split()[-1].lstrip("#")),
+                        "name": " ".join(c.split()[:-1]).rstrip("#").strip(),
                     }
                     for c in status_colors
                 ]
-                print(color_codes)
                 color1 = color_codes[0]
                 c1, created = ColorScheme.objects.update_or_create(
-                    name=color1['name'], hex=color1['hex'],
-                    r=color1['rgb'][0], g=color1['rgb'][1], b=color1['rgb'][2]
+                    name=color1["name"],
+                    hex=color1["hex"],
+                    r=color1["rgb"][0],
+                    g=color1["rgb"][1],
+                    b=color1["rgb"][2],
                 )
-                print(c1)
                 color2 = color_codes[1]
                 c2, created = ColorScheme.objects.update_or_create(
-                    name=color2['name'], hex=color2['hex'],
-                    r=color2['rgb'][0], g=color2['rgb'][1], b=color2['rgb'][2],
-                    pair_with=c1
+                    name=color2["name"],
+                    hex=color2["hex"],
+                    r=color2["rgb"][0],
+                    g=color2["rgb"][1],
+                    b=color2["rgb"][2],
+                    pair_with=c1,
                 )
-                print(c2)
                 c1.pair_with = c2
                 c1.save()
-        # ColorScheme.objects.bulk_create(color_objs, ignore_conflicts=True)
         statuses = mastodon.fetch_next(statuses)
 
+
 @db_task()
-def generate_jersey(
-    name_id
-):
+def generate_jersey(name_id):
     name = DerbyName.objects.get(pk=name_id)
-    print(name)
-    im = Image.open(settings.BASE_DIR.joinpath('derbot','names','images','t-shirt.jpg'))
-    print(im)
+    im = Image.open(
+        settings.BASE_DIR.joinpath("derbot", "names", "images", "t-shirt.jpg")
+    )
     fg_color, bg_color = name.get_jersey_colors()
     number = name.get_number()
     im_gray = ImageOps.grayscale(im)
-    im_color = ImageOps.colorize(im_gray, bg_color.rgb(), 'white')
+    im_color = ImageOps.colorize(im_gray, bg_color.rgb(), "white")
     draw = ImageDraw.Draw(im_color)
     font = random.choice(settings.FONTS)
-    print(font)
     font_path = os.path.join(settings.FONT_DIR, font)
-    print(font_path)
-    print("Generating jersey for {}".format(name))
     fnt1 = ImageFont.truetype(font_path, size=settings.TEXT_FONT_SIZE)
-    print(fnt1)
     w, h = draw.textsize(name.name, font=fnt1)
     lines = text_wrap(name.name, fnt1, settings.MAX_TEXT_WIDTH)
-    print(lines)
-    y = (im_color.height - h) * .2
+    y = (im_color.height - h) * 0.2
     for line in lines:
-        print(line)
         line_width, line_height = draw.textsize(line, font=fnt1)
-        print(line_width, line_height)
-        draw.text(((im_color.width - line_width) / 2, y),line, fill=fg_color.rgb(), font=fnt1)
+        draw.text(
+            ((im_color.width - line_width) / 2, y), line, fill=fg_color.rgb(), font=fnt1
+        )
         y += line_height
-    # Generate a random float 1-9999 and pick a substring from it
     nfs = settings.NUMBER_FONT_SIZE
     fnt2 = ImageFont.truetype(font_path, size=nfs)
     w, h = draw.textsize(number, font=fnt2)
@@ -298,8 +304,7 @@ def generate_jersey(
         nfs = nfs - 10
         fnt2 = ImageFont.truetype(font_path, size=nfs)
         w, h = draw.textsize(number, font=fnt2)
-        draw.text(((im_color.width - w) / 2, y), number, fill=fg_color.rgb(), font=fnt2)
+    draw.text(((im_color.width - w) / 2, y), number, fill=fg_color.rgb(), font=fnt2)
     blob = BytesIO()
-    im_color.save(blob, 'JPEG')
-    name.jersey.save("{}.jpg".format(
-        name.id), File(blob), save=False)
+    im_color.save(blob, "JPEG")
+    name.jersey.save("{}.jpg".format(name.id), File(blob), save=True)
