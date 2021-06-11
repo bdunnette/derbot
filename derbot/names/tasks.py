@@ -308,3 +308,16 @@ def generate_jersey(name_id):
     blob = BytesIO()
     im_color.save(blob, "JPEG")
     name.jersey.save("{}.jpg".format(name.id), File(blob), save=True)
+
+
+@db_periodic_task(crontab(minute="*/10"))
+def generate_jerseys(name_ids=None):
+    if name_ids:
+        for name_id in name_ids:
+            generate_jersey(name_id=name_id)
+    else:
+        cleared_names = DerbyName.objects.filter(
+            Q(registered=False) & Q(tooted=None) & Q(cleared=True) & Q(jersey="")
+        )
+        for name in cleared_names:
+            generate_jersey(name_id=name.id)

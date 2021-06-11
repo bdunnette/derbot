@@ -1,10 +1,10 @@
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 import random
 import fractions
 import humanize
 
-# from derbot.names.tasks import generate_number
+from derbot.names.tasks import generate_jersey
 from derbot.names.models import DerbyName, ColorScheme
 
 
@@ -28,4 +28,10 @@ def generate_number(sender, instance, **kwargs):
         print(fg_color, bg_color)
         instance.fg_color = fg_color
         instance.bg_color = bg_color
+
+
+@receiver(post_save, sender=DerbyName)
+def generate_number(sender, instance, **kwargs):
+    if instance.cleared and instance.jersey == "":
+        generate_jersey(name_id=instance.id)
 
