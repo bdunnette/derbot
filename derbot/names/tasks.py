@@ -1,19 +1,19 @@
+import os
 import random
 import string
-import os
+from io import BytesIO
 
 import requests
 from bs4 import BeautifulSoup
-from derbot.names.models import DerbyName, ColorScheme
+from derbot.names.models import ColorScheme, DerbyName
 from django.conf import settings
+from django.core.files import File
 from django.db.models import Q
 from django.utils import timezone
-from django.core.files import File
-from io import BytesIO
-from PIL import Image, ImageOps, ImageDraw, ImageFont
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, task
 from inscriptis import get_text
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 logger = settings.LOGGER
 

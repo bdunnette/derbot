@@ -2,6 +2,7 @@ from django.db import models
 import random
 import humanize
 
+
 class DerbyName(models.Model):
     name = models.CharField(max_length=255, unique=True)
     number = models.CharField(max_length=64, null=True, blank=True)
@@ -15,10 +16,18 @@ class DerbyName(models.Model):
     favourites_count = models.IntegerField(default=0)
     jersey = models.ImageField(upload_to="jerseys/", null=True, blank=True)
     fg_color = models.ForeignKey(
-        "ColorScheme", blank=True, null=True, on_delete=models.SET_NULL, related_name="jersey_fg"
+        "ColorScheme",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="jersey_fg",
     )
     bg_color = models.ForeignKey(
-        "ColorScheme", blank=True, null=True, on_delete=models.SET_NULL, related_name="jersey_bg"
+        "ColorScheme",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="jersey_bg",
     )
 
     def __str__(self):
@@ -33,7 +42,7 @@ class DerbyName(models.Model):
             if to_humanize == True:
                 jersey_number = humanize.fractional(jersey_number).replace("/", "⁄")
             self.number = jersey_number
-        return(self.number)
+        return self.number
 
     def get_jersey_colors(self):
         if self.fg_color is None or self.bg_color is None:
@@ -42,7 +51,7 @@ class DerbyName(models.Model):
             self.fg_color = fg_color
             self.bg_color = bg_color
             self.save()
-        return(self.fg_color, self.bg_color)
+        return (self.fg_color, self.bg_color)
 
 
 class ColorScheme(models.Model):

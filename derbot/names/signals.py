@@ -1,7 +1,6 @@
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 import random
-import fractions
 import humanize
 
 from derbot.names.tasks import generate_jersey
