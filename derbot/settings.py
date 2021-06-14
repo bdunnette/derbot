@@ -193,7 +193,7 @@ MIN_TEMP = env("MIN_TEMP", default=0.2, cast=float)
 MAX_TEMP = env("MAX_TEMP", default=1.0, cast=float)
 
 DO_WAIT = env("DO_WAIT", default=True, cast=bool)
-MIN_WAIT = env("MIN_WAIT", default=10, cast=int)
+MIN_WAIT = env("MIN_WAIT", default=30, cast=int)
 MAX_WAIT = env("MAX_WAIT", default=300, cast=int)
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = env("DATA_UPLOAD_MAX_NUMBER_FIELDS", default=None)

@@ -40,7 +40,7 @@ class DerbyName(models.Model):
             ].strip(".")
             to_humanize = bool(random.getrandbits(1))
             if to_humanize == True:
-                jersey_number = humanize.fractional(jersey_number).replace("/", "⁄")
+                jersey_number = humanize.fractional(jersey_number)
             self.number = jersey_number
         return self.number
 
