@@ -64,6 +64,8 @@ local_settings.py
 *.sqlite3-wal
 static/**
 jerseys/**
+logs/**
+!logs/.gitkeep
 
 # Flask stuff:
 instance/

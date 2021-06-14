@@ -122,7 +122,7 @@ def toot_name(
     else:
         name = (
             DerbyName.objects.filter(
-                Q(registered=False) & Q(tooted=None) & Q(cleared=True)
+                Q(registered=False) & Q(tooted=None) & Q(cleared=True) & Q(jersey=True)
             )
             .order_by("?")
             .first()
@@ -137,7 +137,7 @@ def toot_name(
             )
         else:
             print("Tooting name '{0}'...".format(name))
-            if name.jersey == "":
+            if not name.jersey:
                 toot = mastodon.status_post(name)
             else:
                 image_description = "{0}-colored shirt with '{1}'\
