@@ -81,20 +81,18 @@ def generate_names(
         DerbyName(name=name, generated=timezone.now(), temperature=temperature[idx])
         for idx, name in enumerate(new_names)
     ]
-
     DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
-
-    return "Generated {0} names: {1}".format(len(new_name_objs), new_name_objs)
+    logging.info("Generated {0} names: {1}".format(len(new_name_objs), new_name_objs))
 
 
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_toots(mastodon=settings.MASTO):
     account_id = mastodon.account_verify_credentials()["id"]
-    print("Downloading statuses for account {0}...".format(account_id))
+    logging.info("Downloading statuses for account {0}...".format(account_id))
     statuses = mastodon.account_statuses(account_id, exclude_replies=True)
     while statuses:
-        # print(statuses)
-        # print(dir(statuses))
+        # logging.debug(statuses)
+        # logging.debug(dir(statuses))
         new_name_objs = [
             DerbyName(
                 name=get_text(s.content).strip(),
@@ -131,12 +129,12 @@ def toot_name(
     if name:
         if do_wait:
             delay = random.randint(min_wait, max_wait)
-            print("Waiting {0} seconds before tooting {1}".format(delay, name))
+            logging.info("Waiting {0} seconds before tooting {1}".format(delay, name))
             toot_name.schedule(
                 kwargs={"name_id": name.pk, "do_wait": False}, delay=delay
             )
         else:
-            print("Tooting name '{0}'...".format(name))
+            logging.info("Tooting name '{0}'...".format(name))
             if not name.jersey:
                 toot = mastodon.status_post(name)
             else:
@@ -150,20 +148,20 @@ def toot_name(
                 )
                 logging.debug(media)
                 toot = mastodon.status_post(name, media_ids=media)
-            print("  Tooted at {0}".format(toot.created_at))
+            logging.info("  Tooted at {0}".format(toot.created_at))
             name.toot_id = toot.id
             name.tooted = toot.created_at
             name.save()
             return name
     else:
-        print("No matching names found, exiting...")
+        logging.info("No matching names found, exiting...")
         return False
 
 
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_twoevils(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "https://www.twoevils.org/rollergirls/"
-    print("Downloading names from %s" % url)
+    logging.info("Downloading names from %s" % url)
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
     rows = soup.find_all("tr", {"class": ["trc1", "trc2"]})
@@ -175,7 +173,7 @@ def fetch_names_twoevils(session=settings.SESSION, timeout=settings.REQUEST_TIME
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_drc(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "http://www.derbyrollcall.com/everyone"
-    print("Downloading names from %s" % url)
+    logging.info("Downloading names from %s" % url)
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
     rows = soup.find_all("td", {"class": "name"})
@@ -187,7 +185,7 @@ def fetch_names_drc(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_wftda(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/"
-    print("Downloading names from {0}".format(url))
+    logging.info("Downloading names from {0}".format(url))
     session.headers.update({"User-Agent": "Mozilla/5.0"})
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
@@ -213,7 +211,7 @@ def fetch_names_rdr_letter(
         try:
             names = []
             url = "https://rollerderbyroster.com/view-names/?ini={0}".format(letter)
-            print("Downloading names from {0}".format(url))
+            logging.info("Downloading names from {0}".format(url))
             r = session.get(url, timeout=timeout)
             soup = BeautifulSoup(r.text, "lxml")
             rows = soup.find_all("ul")
@@ -227,10 +225,10 @@ def fetch_names_rdr_letter(
             ]
             DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
         except requests.Timeout:
-            print("  Timeout reading from {0}".format(url))
+            logging.warning("  Timeout reading from {0}".format(url))
             pass
     else:
-        print("Need initial letter!")
+        logging.warning("Need initial letter!")
         return False
 
 
