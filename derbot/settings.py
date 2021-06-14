@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
+import logging
 from pathlib import Path
 
 import environ
@@ -23,6 +24,8 @@ from django.core.management.utils import get_random_secret_key
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
+
+LOGGER = logging.getLogger(__name__)
 
 # reading .env file
 environ.Env.read_env(env_file=str(BASE_DIR.joinpath(".env")))
@@ -205,3 +208,20 @@ TEXT_FONT_SIZE = env.int('TEXT_FONT_SIZE', default=60)
 NUMBER_FONT_SIZE = env.int('NUMBER_FONT_SIZE', default=180)
 MAX_TEXT_WIDTH = env.int('MAX_TEXT_WIDTH', default=340)
 MAX_NUMBER_WIDTH = env.int('MAX_TEXT_WIDTH', default=280)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+}
+
+if DEBUG:
+    LOGGING['root']['level'] = 'DEBUG'

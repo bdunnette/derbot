@@ -1,7 +1,6 @@
 import random
 import string
 import os
-import logging
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,6 +14,8 @@ from PIL import Image, ImageOps, ImageDraw, ImageFont
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, task
 from inscriptis import get_text
+
+logger = settings.LOGGER
 
 
 def hex_to_rgb(hex):
@@ -82,17 +83,17 @@ def generate_names(
         for idx, name in enumerate(new_names)
     ]
     DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
-    logging.info("Generated {0} names: {1}".format(len(new_name_objs), new_name_objs))
+    logger.info("Generated {0} names: {1}".format(len(new_name_objs), new_name_objs))
 
 
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_toots(mastodon=settings.MASTO):
     account_id = mastodon.account_verify_credentials()["id"]
-    logging.info("Downloading statuses for account {0}...".format(account_id))
+    logger.info("Downloading statuses for account {0}...".format(account_id))
     statuses = mastodon.account_statuses(account_id, exclude_replies=True)
     while statuses:
-        # logging.debug(statuses)
-        # logging.debug(dir(statuses))
+        # logger.debug(statuses)
+        # logger.debug(dir(statuses))
         new_name_objs = [
             DerbyName(
                 name=get_text(s.content).strip(),
@@ -115,53 +116,57 @@ def toot_name(
     min_wait=settings.MIN_WAIT,
     max_wait=settings.MAX_WAIT,
 ):
+
     if name_id:
         name = DerbyName.objects.get(pk=name_id)
     else:
         name = (
             DerbyName.objects.filter(
-                Q(registered=False) & Q(tooted=None) & Q(cleared=True) & Q(jersey=True)
+                Q(registered=False)
+                & Q(tooted=None)
+                & Q(cleared=True)
+                & ~Q(jersey=False)
             )
             .order_by("?")
             .first()
         )
 
+    logger.debug(name)
     if name:
         if do_wait:
             delay = random.randint(min_wait, max_wait)
-            logging.info("Waiting {0} seconds before tooting {1}".format(delay, name))
+            logger.info("Waiting {0} seconds before tooting {1}".format(delay, name))
             toot_name.schedule(
                 kwargs={"name_id": name.pk, "do_wait": False}, delay=delay
             )
         else:
-            logging.info("Tooting name '{0}'...".format(name))
-            if not name.jersey:
-                toot = mastodon.status_post(name)
-            else:
-                image_description = "{0}-colored shirt with '{1}'\
-                        and the number {2} printed on it in {3} lettering.".format(
+            logger.info("Tooting name '{0}'...".format(name))
+            if bool(name.jersey):
+                image_description = "{0}-colored shirt with '{1}' and the number {2} printed on it in {3} lettering.".format(
                     str(name.bg_color), str(name), name.number, str(name.fg_color)
                 )
-                logging.info(image_description)
+                logger.info(image_description)
                 media = mastodon.media_post(
                     name.jersey, mime_type="image/jpeg", description=image_description
                 )
-                logging.debug(media)
-                toot = mastodon.status_post(name, media_ids=media)
-            logging.info("  Tooted at {0}".format(toot.created_at))
+                logger.debug(media)
+                toot = mastodon.status_post(name, media_ids=media)  #
+            else:
+                toot = mastodon.status_post(name)
+            logger.info("  Tooted at {0}".format(toot.created_at))
             name.toot_id = toot.id
             name.tooted = toot.created_at
             name.save()
-            return name
+            return name.toot_id
     else:
-        logging.info("No matching names found, exiting...")
+        logger.info("No matching names found, exiting...")
         return False
 
 
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_twoevils(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "https://www.twoevils.org/rollergirls/"
-    logging.info("Downloading names from %s" % url)
+    logger.info("Downloading names from %s" % url)
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
     rows = soup.find_all("tr", {"class": ["trc1", "trc2"]})
@@ -173,7 +178,7 @@ def fetch_names_twoevils(session=settings.SESSION, timeout=settings.REQUEST_TIME
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_drc(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "http://www.derbyrollcall.com/everyone"
-    logging.info("Downloading names from %s" % url)
+    logger.info("Downloading names from %s" % url)
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
     rows = soup.find_all("td", {"class": "name"})
@@ -185,7 +190,7 @@ def fetch_names_drc(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
 @db_periodic_task(crontab(hour="3", minute="0"))
 def fetch_names_wftda(session=settings.SESSION, timeout=settings.REQUEST_TIMEOUT):
     url = "https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/"
-    logging.info("Downloading names from {0}".format(url))
+    logger.info("Downloading names from {0}".format(url))
     session.headers.update({"User-Agent": "Mozilla/5.0"})
     r = session.get(url, timeout=timeout)
     soup = BeautifulSoup(r.text, "lxml")
@@ -211,7 +216,7 @@ def fetch_names_rdr_letter(
         try:
             names = []
             url = "https://rollerderbyroster.com/view-names/?ini={0}".format(letter)
-            logging.info("Downloading names from {0}".format(url))
+            logger.info("Downloading names from {0}".format(url))
             r = session.get(url, timeout=timeout)
             soup = BeautifulSoup(r.text, "lxml")
             rows = soup.find_all("ul")
@@ -225,10 +230,10 @@ def fetch_names_rdr_letter(
             ]
             DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
         except requests.Timeout:
-            logging.warning("  Timeout reading from {0}".format(url))
+            logger.warning("  Timeout reading from {0}".format(url))
             pass
     else:
-        logging.warning("Need initial letter!")
+        logger.warning("Need initial letter!")
         return False
 
 
@@ -275,34 +280,46 @@ def fetch_colors(mastodon=settings.MASTO, color_bot=settings.COLOR_BOT):
 @db_task()
 def generate_jersey(name_id):
     name = DerbyName.objects.get(pk=name_id)
+    # open template image
     im = Image.open(
         settings.BASE_DIR.joinpath("derbot", "names", "images", "t-shirt.jpg")
     )
     fg_color, bg_color = name.get_jersey_colors()
     number = name.get_number()
+    # create grayscale version so we can re-color it
     im_gray = ImageOps.grayscale(im)
+    # colorize the jersey with our chosen name's "background" color
     im_color = ImageOps.colorize(im_gray, bg_color.rgb(), "white")
     draw = ImageDraw.Draw(im_color)
+    # choose random font
     font = random.choice(settings.FONTS)
     font_path = os.path.join(settings.FONT_DIR, font)
     fnt1 = ImageFont.truetype(font_path, size=settings.TEXT_FONT_SIZE)
+    # get size of name in our chosen font
     w, h = draw.textsize(name.name, font=fnt1)
+    # break up name into multiple lines if necessary to fit on shirt
     lines = text_wrap(name.name, fnt1, settings.MAX_TEXT_WIDTH)
+    # start to place name on shirt image - with current template, starting 20% down from top works well
     y = (im_color.height - h) * 0.2
     for line in lines:
+        # add each line of name text to the image, centered
         line_width, line_height = draw.textsize(line, font=fnt1)
         draw.text(
             ((im_color.width - line_width) / 2, y), line, fill=fg_color.rgb(), font=fnt1
         )
         y += line_height
+    # create jersey number text
     nfs = settings.NUMBER_FONT_SIZE
     fnt2 = ImageFont.truetype(font_path, size=nfs)
     w, h = draw.textsize(number, font=fnt2)
+    # keep reducing size of number text until it's less than MAX_NUMBER_WIDTH
     while w > settings.MAX_NUMBER_WIDTH:
         nfs = nfs - 10
         fnt2 = ImageFont.truetype(font_path, size=nfs)
         w, h = draw.textsize(number, font=fnt2)
+    # once number text will fit on shirt, add it to the image
     draw.text(((im_color.width - w) / 2, y), number, fill=fg_color.rgb(), font=fnt2)
+    # save generated image to the related name instance
     blob = BytesIO()
     im_color.save(blob, "JPEG")
     name.jersey.save("{}.jpg".format(name.id), File(blob), save=True)

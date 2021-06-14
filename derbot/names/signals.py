@@ -32,6 +32,6 @@ def generate_number(sender, instance, **kwargs):
 
 @receiver(post_save, sender=DerbyName)
 def generate_number(sender, instance, **kwargs):
-    if instance.cleared and instance.jersey == "":
+    if instance.cleared and not instance.tooted and not instance.jersey:
         generate_jersey(name_id=instance.id)
 
