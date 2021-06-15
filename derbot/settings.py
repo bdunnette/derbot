@@ -185,7 +185,6 @@ MASTO = Mastodon(
 ACTUALLY_TOOT = env("ACTUALLY_TOOT", default=True, cast=bool)
 
 MODEL_NAME = env("MODEL_NAME", default="derbynames")
-NAME_BUFFER_SIZE = env("NAME_BUFFER_SIZE", default=100)
 
 DEFAULT_TEMP = env("DEFAULT_TEMP", default=1.0)
 USE_RANDOM_TEMPS = env("USE_RANDOM_TEMPS", default=True, cast=bool)
@@ -208,6 +207,8 @@ TEXT_FONT_SIZE = env.int('TEXT_FONT_SIZE', default=60)
 NUMBER_FONT_SIZE = env.int('NUMBER_FONT_SIZE', default=180)
 MAX_TEXT_WIDTH = env.int('MAX_TEXT_WIDTH', default=340)
 MAX_NUMBER_WIDTH = env.int('MAX_TEXT_WIDTH', default=280)
+
+TOOT_TAGS = env.list('TOOT_TAGS',default=['#rollerderby','#derbynames'])
 
 LOGGING = {
     'version': 1,

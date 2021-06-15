@@ -141,6 +141,8 @@ def toot_name(
             )
         else:
             logger.info("Tooting name '{0}'...".format(name))
+            toot_content = " ".join([str(name)] + [str(t) for t in settings.TOOT_TAGS])
+            logger.info(toot_content)
             if bool(name.jersey):
                 image_description = "{0}-colored shirt with '{1}' and the number {2} printed on it in {3} lettering.".format(
                     str(name.bg_color), str(name), name.number, str(name.fg_color)
@@ -150,9 +152,9 @@ def toot_name(
                     name.jersey, mime_type="image/jpeg", description=image_description
                 )
                 logger.debug(media)
-                toot = mastodon.status_post(name, media_ids=media)  #
+                toot = mastodon.status_post(toot_content, media_ids=media)
             else:
-                toot = mastodon.status_post(name)
+                toot = mastodon.status_post(toot_content)
             logger.info("  Tooted at {0}".format(toot.created_at))
             name.toot_id = toot.id
             name.tooted = toot.created_at
