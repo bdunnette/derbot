@@ -18,6 +18,7 @@ redis = "*"
 numpy = "==1.19.5"
 humanize = "*"
 pillow = "*"
+tensorflow = "==2.4.0"
 
 [dev-packages]
 black = "==21.5b2"
@@ -28,5 +29,5 @@ python_version = "3"
 [pipenv]
 allow_prereleases = true
 
-[packages.textgenrnn]
+["packages.textgenrnn"]
 git = "https://github.com/minimaxir/textgenrnn.git"

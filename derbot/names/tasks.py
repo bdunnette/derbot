@@ -13,7 +13,7 @@ from django.utils import timezone
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, task
 from inscriptis import get_text
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
 
 logger = settings.LOGGER
 
@@ -60,7 +60,7 @@ def generate_names(
 ):
     from textgenrnn import textgenrnn
 
-    model_path = settings.BASE_DIR.joinpath("derbot", "model")
+    model_path = settings.BASE_DIR.joinpath("derbot", "rnn_models", "names_textgenrnn")
     textgen = textgenrnn(
         weights_path=model_path.joinpath("{}_weights.hdf5".format(settings.MODEL_NAME)),
         vocab_path=model_path.joinpath("{}_vocab.json".format(settings.MODEL_NAME)),
@@ -84,6 +84,58 @@ def generate_names(
     ]
     DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
     logger.info("Generated {0} names: {1}".format(len(new_name_objs), new_name_objs))
+
+
+def generate_names_gru(chars=1000, start_char=[random.choice(string.printable)]):
+    import tensorflow as tf
+
+    model_path = settings.BASE_DIR.joinpath("derbot", "rnn_models", "names_gru")
+    model = tf.saved_model.load(str(model_path))
+
+    states = None
+    next_char = tf.constant(start_char)
+    result = [next_char]
+
+    for n in range(chars):
+        next_char, states = model.generate_one_step(next_char, states=states)
+        result.append(next_char)
+
+    names = tf.strings.join(result)[0].numpy().decode("utf-8").splitlines()
+    logger.debug(names)
+    return names
+
+
+def generate_numbers_gru(chars=1000, start_char=[random.choice(string.printable)]):
+    import tensorflow as tf
+
+    model_path = settings.BASE_DIR.joinpath("derbot", "rnn_models", "numbers_gru")
+    model = tf.saved_model.load(str(model_path))
+
+    states = None
+    next_char = tf.constant(start_char)
+    result = [next_char]
+
+    for n in range(chars):
+        next_char, states = model.generate_one_step(next_char, states=states)
+        result.append(next_char)
+
+    numbers = tf.strings.join(result)[0].numpy().decode("utf-8").splitlines()
+    logger.debug(numbers)
+    return numbers
+
+
+@db_periodic_task(crontab(minute="*/20"))
+def generate_names_numbers(batch_size=1000):
+    new_name_objs = [
+        DerbyName(name=n[0].strip(), number=n[1].strip(), generated=timezone.now())
+        for n in zip(
+            generate_names_gru(chars=batch_size), generate_numbers_gru(chars=batch_size)
+        )
+    ]
+    logger.debug(new_name_objs)
+    DerbyName.objects.bulk_create(new_name_objs, ignore_conflicts=True)
+    logger.info("Generated {0} names: {1}".format(len(new_name_objs), new_name_objs))
+    return new_name_objs
 
 
 @db_periodic_task(crontab(hour="3", minute="0"))
@@ -327,7 +379,60 @@ def generate_jersey(name_id):
     name.jersey.save("{}.jpg".format(name.id), File(blob), save=True)
 
 
-@db_periodic_task(crontab(minute="*/10"))
+@db_task()
+def generate_tank(name_id):
+    name = DerbyName.objects.get(pk=name_id)
+    # open template image
+    mask = Image.open(
+        settings.BASE_DIR.joinpath("derbot", "names", "images", "tank-mask.png")
+    )
+    fg_color, bg_color = name.get_jersey_colors()
+    number = name.get_number()
+    # create grayscale version so we can re-color it
+    im_gray = ImageOps.grayscale(mask)
+    # colorize the jersey with our chosen name's "background" color
+    im_color = ImageOps.colorize(im_gray, bg_color.rgb(), "white")
+    max_width = im_color.width * 0.6
+    draw = ImageDraw.Draw(im_color)
+    # choose random font
+    font = random.choice(settings.FONTS)
+    font_path = os.path.join(settings.FONT_DIR, font)
+    fnt1 = ImageFont.truetype(font_path, size=settings.TEXT_FONT_SIZE)
+    # get size of name in our chosen font
+    w, h = draw.textsize(name.name, font=fnt1)
+    # break up name into multiple lines if necessary to fit on shirt
+    lines = text_wrap(name.name, fnt1, max_width)
+    # start to place name on shirt image - with current template, starting 20% down from top works well
+    y = (im_color.height - h) * 0.3
+    for line in lines:
+        # add each line of name text to the image, centered
+        line_width, line_height = draw.textsize(line, font=fnt1)
+        draw.text(
+            ((im_color.width - line_width) / 2, y), line, fill=fg_color.rgb(), font=fnt1
+        )
+        y += line_height
+    # create jersey number text
+    nfs = settings.NUMBER_FONT_SIZE
+    fnt2 = ImageFont.truetype(font_path, size=nfs)
+    w, h = draw.textsize(number, font=fnt2)
+    # keep reducing size of number text until it's less than MAX_NUMBER_WIDTH
+    while w > max_width:
+        nfs = nfs - 10
+        fnt2 = ImageFont.truetype(font_path, size=nfs)
+        w, h = draw.textsize(number, font=fnt2)
+    # once number text will fit on shirt, add it to the image
+    draw.text(((im_color.width - w) / 2, y), number, fill=fg_color.rgb(), font=fnt2)
+    # add overlay
+    im_overlay = Image.open(
+        settings.BASE_DIR.joinpath("derbot", "names", "images", "tank-overlay.png")
+    )
+    im_final = ImageChops.multiply(im_color, im_overlay)
+    # save generated image to the related name instance
+    blob = BytesIO()
+    im_final.save(blob, "JPEG")
+    name.jersey.save("{}.jpg".format(name.id), File(blob), save=True)
+
+
 def generate_jerseys(name_ids=None):
     if name_ids:
         for name_id in name_ids:
@@ -338,3 +443,16 @@ def generate_jerseys(name_ids=None):
         )
         for name in cleared_names:
             generate_jersey(name_id=name.id)
+
+
+@db_periodic_task(crontab(minute="*/10"))
+def generate_tanks(name_ids=None):
+    if name_ids:
+        for name_id in name_ids:
+            generate_tank(name_id=name_id)
+    else:
+        cleared_names = DerbyName.objects.filter(
+            Q(registered=False) & Q(tooted=None) & Q(cleared=True) & Q(jersey="")
+        )
+        for name in cleared_names:
+            generate_tank(name_id=name.id)
