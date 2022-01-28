@@ -28,7 +28,9 @@ env = environ.Env()
 LOGGER = logging.getLogger(__name__)
 
 # reading .env file
-environ.Env.read_env(env_file=str(BASE_DIR.joinpath(".env")))
+ENV_FILE = str(BASE_DIR.joinpath(".env"))
+print(f"ENV_FILE={ENV_FILE}")
+environ.Env.read_env(env_file=ENV_FILE)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -39,8 +41,8 @@ SECRET_KEY = env.str("SECRET_KEY", default=get_random_secret_key())
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
-
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost","0.0.0.0"])
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 # Application definition
 

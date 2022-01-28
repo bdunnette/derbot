@@ -45,6 +45,7 @@ class NameAdmin(ImportExportMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "name",
+	"number",
         "generated",
         "temperature",
         "cleared",
